@@ -78,8 +78,8 @@ Caddy then obtains and renews a publicly trusted certificate over ACME. Apply wi
 ## Checklist: the rest of the guide
 
 - [ ] **Environments** — Settings ▸ Environments: production's write policy Read-only (or Guarded), Allow insecure TLS off.
-- [ ] **Roles** — Settings ▸ Users and Roles: Viewer to read, Operator to change, Auditor for Operations ▸ Access Review.
-- [ ] **Audit** — Settings ▸ Security: Read auditing (Privileged reads by default) and the retention period, at most six months.
+- [ ] **Roles** — Settings ▸ Users and Roles: Viewer to read, Operator to change, Auditor for Operations ▸ Access Review (Commercial).
+- [ ] **Audit** — Settings ▸ Security: the retention period, at most six months, and read auditing (Commercial; Community records writes and refusals only).
 - [ ] **KEK rotation** — new key in `BROKA_KEK`/`BROKA_KEK_ID`, old one in `BROKA_KEK_PREVIOUS`/`BROKA_KEK_PREVIOUS_ID`, `up -d`, then Settings ▸ Security ▸ Rotate key-encryption key.
 - [ ] **API tokens** — scripts sign in with a token from Profile ▸ API tokens; it carries its owner's current permissions.
 

@@ -136,10 +136,10 @@ On Linux, use the host's IP address instead of `host.docker.internal`.
 
 ### Both
 
-**Operations ▸ Access Review** resolves the team member's access and shows what conferred each
-permission: Viewer everywhere and Operator in `Development` and `Staging`, both through the team. The
-**audit log** has the ACL and permission reads and changes made above, with the environment each one
-happened in.
+**Operations ▸ Access Review** (Commercial) resolves the team member's access and shows what conferred
+each permission: Viewer everywhere and Operator in `Development` and `Staging`, both through the team. The
+**audit log** has the ACL and permission changes made above, with the environment each one happened in;
+the reads are recorded in Commercial.
 
 ## Clean up
 

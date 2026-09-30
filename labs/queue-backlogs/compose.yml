@@ -1,0 +1,75 @@
+name: broka-lab-queue-backlogs
+
+x-perf-test: &perf-test
+  image: pivotalrabbitmq/perf-test:2.25.0
+  depends_on:
+    seed:
+      condition: service_completed_successfully
+  restart: unless-stopped
+
+services:
+  rabbitmq:
+    image: rabbitmq:4.3.4-management
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: broka
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-broka-lab-pass}
+    ports:
+      - "${RABBITMQ_MANAGEMENT_PORT:-15710}:15672"
+      - "${RABBITMQ_AMQP_PORT:-15711}:5672"
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/30-lab.conf:ro
+      - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q check_running && rabbitmq-diagnostics -q check_port_connectivity"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+
+  seed:
+    image: curlimages/curl:8.11.1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-broka-lab-pass}
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./rabbitmq/definitions.json:/definitions.json:ro
+    entrypoint: ["sh", "/scripts/seed.sh"]
+    restart: "no"
+
+  publisher:
+    <<: *perf-test
+    command:
+      - --uri=amqp://broka:${RABBITMQ_PASSWORD:-broka-lab-pass}@rabbitmq:5672/shop
+      - --id=orders-ingest
+      - --producers=1
+      - --consumers=0
+      - --predeclared
+      - --exchange=orders
+      - --routing-key=order.created
+      - --rate=${PUBLISH_RATE:-30}
+      - --flag=persistent
+      - --json-body
+      - --size=200
+      - --interval=10
+
+  # Acknowledges one message at a time at a fixed pace, so its prefetch stays full.
+  consumer:
+    <<: *perf-test
+    command:
+      - --uri=amqp://broka:${RABBITMQ_PASSWORD:-broka-lab-pass}@rabbitmq:5672/shop
+      - --id=audit-worker
+      - --producers=0
+      - --consumers=1
+      - --predeclared
+      - --queue=orders.audit
+      - --qos=${CONSUMER_PREFETCH:-20}
+      - --consumer-rate=${CONSUME_RATE:-5}
+      - --interval=10
+
+volumes:
+  rabbitmq-data:

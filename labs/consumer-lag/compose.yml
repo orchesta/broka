@@ -1,0 +1,86 @@
+name: broka-lab-consumer-lag
+
+x-kafka-client: &kafka-client
+  image: apache/kafka:3.8.0
+  depends_on:
+    seed:
+      condition: service_completed_successfully
+  restart: unless-stopped
+
+# Each member runs in its own container, so the group reports two different client hosts.
+# One batch per partition every two seconds keeps the group Stable and slower than the producer.
+x-loader: &loader
+  <<: *kafka-client
+  entrypoint: ["/bin/bash", "-c"]
+  command:
+    - >-
+      exec /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:29092
+      --topic clickstream.raw --group analytics-loader
+      --consumer-property client.id=$$CLIENT_ID
+      --consumer-property max.partition.fetch.bytes=1
+      --consumer-property fetch.min.bytes=50000000
+      --consumer-property fetch.max.wait.ms=2000
+      --consumer-property auto.commit.interval.ms=2000
+      > /dev/null
+
+services:
+  kafka:
+    image: apache/kafka:3.8.0
+    hostname: kafka
+    ports:
+      - "${KAFKA_PORT:-19092}:19092"
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:19092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-host.docker.internal}:${KAFKA_PORT:-19092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:29092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 20s
+      retries: 12
+      start_period: 20s
+
+  seed:
+    image: apache/kafka:3.8.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: "no"
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["bash", "/scripts/seed.sh"]
+
+  producer:
+    <<: *kafka-client
+    environment:
+      RATE: ${RATE:-40}
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["bash", "/scripts/load.sh"]
+
+  loader-1:
+    <<: *loader
+    hostname: loader-1
+    environment:
+      CLIENT_ID: analytics-loader-1
+
+  loader-2:
+    <<: *loader
+    hostname: loader-2
+    environment:
+      CLIENT_ID: analytics-loader-2
+
+volumes:
+  kafka-data:

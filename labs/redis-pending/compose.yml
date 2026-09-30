@@ -1,0 +1,32 @@
+name: broka-lab-redis-pending
+
+services:
+  redis:
+    image: redis:8.10-alpine
+    ports:
+      - "${REDIS_PORT:-16379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "PING"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  seed:
+    image: redis:8.10-alpine
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./scripts/seed.sh:/seed.sh:ro
+    entrypoint: ["sh", "/seed.sh"]
+    restart: "no"
+
+  poller:
+    image: redis:8.10-alpine
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    volumes:
+      - ./scripts/poll.sh:/poll.sh:ro
+    entrypoint: ["sh", "/poll.sh"]
+    restart: unless-stopped

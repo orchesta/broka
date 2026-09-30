@@ -1,0 +1,46 @@
+# Override for install/compose.yml:
+#   docker compose -f ../../install/compose.yml -f compose.yml up -d
+# Relative paths resolve from install/, the directory of the first file.
+name: broka-lab-hardening
+
+services:
+  ui:
+    ports: !reset []
+    environment:
+      BROKA_TRUSTED_PROXIES: ${EDGE_SUBNET:-10.203.44.0/28}
+    networks:
+      - default
+      - edge
+
+  proxy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    depends_on:
+      ui:
+        condition: service_healthy
+    ports:
+      - "${HTTPS_PORT:-18444}:443"
+    environment:
+      BROKA_DOMAIN: ${BROKA_DOMAIN:-localhost}
+      BROKA_TLS: ${BROKA_TLS:-internal}
+    volumes:
+      - ../labs/hardening/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - edge
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: ${EDGE_SUBNET:-10.203.44.0/28}
+
+volumes:
+  caddy-data:
+  caddy-config:

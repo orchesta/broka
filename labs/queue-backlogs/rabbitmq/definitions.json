@@ -1,0 +1,73 @@
+{
+  "vhosts": [
+    { "name": "shop", "description": "Queue backlogs lab", "tags": [], "default_queue_type": "classic" }
+  ],
+  "permissions": [
+    { "user": "broka", "vhost": "shop", "configure": ".*", "write": ".*", "read": ".*" }
+  ],
+  "policies": [
+    {
+      "name": "dead-letter-default", "vhost": "shop",
+      "pattern": "^(orders\\.audit|payments\\.charge)$", "apply-to": "queues", "priority": 1,
+      "definition": { "dead-letter-exchange": "orders.dlx" }
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "orders", "vhost": "shop", "type": "topic",
+      "durable": true, "auto_delete": false, "internal": false, "arguments": {}
+    },
+    {
+      "name": "orders.dlx", "vhost": "shop", "type": "topic",
+      "durable": true, "auto_delete": false, "internal": false, "arguments": {}
+    },
+    {
+      "name": "payments", "vhost": "shop", "type": "topic",
+      "durable": true, "auto_delete": false, "internal": false, "arguments": {}
+    },
+    {
+      "name": "payments.dlx", "vhost": "shop", "type": "topic",
+      "durable": true, "auto_delete": false, "internal": false, "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "orders.audit", "vhost": "shop", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "classic" }
+    },
+    {
+      "name": "orders.audit.overflow", "vhost": "shop", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "classic" }
+    },
+    {
+      "name": "orders.dlq", "vhost": "shop", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "classic" }
+    },
+    {
+      "name": "payments.charge", "vhost": "shop", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "classic", "x-dead-letter-exchange": "payments.dlx" }
+    },
+    {
+      "name": "payments.dlq", "vhost": "shop", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "classic" }
+    }
+  ],
+  "bindings": [
+    {
+      "source": "orders", "vhost": "shop", "destination": "orders.audit",
+      "destination_type": "queue", "routing_key": "order.#", "arguments": {}
+    },
+    {
+      "source": "orders.dlx", "vhost": "shop", "destination": "orders.dlq",
+      "destination_type": "queue", "routing_key": "#", "arguments": {}
+    },
+    {
+      "source": "payments", "vhost": "shop", "destination": "payments.charge",
+      "destination_type": "queue", "routing_key": "payment.charge", "arguments": {}
+    },
+    {
+      "source": "payments.dlx", "vhost": "shop", "destination": "payments.dlq",
+      "destination_type": "queue", "routing_key": "#", "arguments": {}
+    }
+  ]
+}

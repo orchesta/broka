@@ -1,0 +1,8 @@
+{
+	skip_install_trust
+}
+
+{$BROKA_DOMAIN} {
+	tls {$BROKA_TLS}
+	reverse_proxy ui:8080
+}

@@ -1,0 +1,50 @@
+name: broka-lab-rabbitmq-routing
+
+services:
+  rabbitmq:
+    image: rabbitmq:4.3.4-management
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: broka
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-broka-lab-pass}
+    ports:
+      - "${RABBITMQ_MANAGEMENT_PORT:-15701}:15672"
+      - "${RABBITMQ_AMQP_PORT:-15702}:5672"
+    volumes:
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/conf.d/30-lab.conf:ro
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q check_running && rabbitmq-diagnostics -q check_port_connectivity"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+
+  seed:
+    image: curlimages/curl:8.11.1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-broka-lab-pass}
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./rabbitmq/definitions.json:/definitions.json:ro
+    entrypoint: ["sh", "/scripts/seed.sh"]
+    restart: "no"
+
+  load:
+    image: curlimages/curl:8.11.1
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    environment:
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-broka-lab-pass}
+      LOAD_INTERVAL: ${LOAD_INTERVAL:-1}
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["sh", "/scripts/load.sh"]
+    restart: unless-stopped
+
+volumes:
+  rabbitmq-data:

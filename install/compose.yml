@@ -45,6 +45,8 @@ services:
   broker:
     image: ${BROKER_IMAGE:-orchestalabs/broka-broker}:${BROKA_VERSION:-1.0.0}
     restart: unless-stopped
+    # The JVM sizes its heap to 70% of the container's memory, so without a limit it sizes to the host.
+    mem_limit: 4g
     depends_on:
       orchestrator:
         condition: service_healthy

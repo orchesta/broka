@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "Shipment",
+  "namespace": "com.example.shipping",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string"
+    },
+    {
+      "name": "carrier",
+      "type": "string"
+    }
+  ]
+}

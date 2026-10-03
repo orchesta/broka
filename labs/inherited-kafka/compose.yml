@@ -1,0 +1,187 @@
+name: broka-lab-inherited-kafka
+
+x-broker-env: &broker-env
+  KAFKA_PROCESS_ROLES: broker,controller
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+  CLUSTER_ID: 4L6g3nShT-eMCtK--X86sw
+  # ACLs are enforced, and the lab's own unauthenticated clients are super-users.
+  KAFKA_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
+  KAFKA_SUPER_USERS: User:ANONYMOUS
+  KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+  KAFKA_LOG_RETENTION_HOURS: "168"
+  KAFKA_LOG_DIRS: /var/lib/kafka/data
+  KAFKA_HEAP_OPTS: -Xms384m -Xmx384m
+
+x-broker: &broker
+  image: apache/kafka:4.3.1
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:29092 > /dev/null 2>&1"]
+    interval: 10s
+    timeout: 20s
+    retries: 18
+    start_period: 30s
+
+x-client: &client
+  image: apache/kafka:4.3.1
+  depends_on:
+    seed:
+      condition: service_completed_successfully
+  restart: unless-stopped
+
+# One batch per partition every two seconds keeps the group Stable and slower than the producer.
+x-loader: &loader
+  <<: *client
+  entrypoint: ["/bin/bash", "-c"]
+  command:
+    - >-
+      exec /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-1:29092
+      --topic clickstream.raw --group analytics-loader
+      --consumer-property client.id=$$CLIENT_ID
+      --consumer-property max.partition.fetch.bytes=1
+      --consumer-property fetch.min.bytes=50000000
+      --consumer-property fetch.max.wait.ms=2000
+      --consumer-property auto.commit.interval.ms=2000
+      > /dev/null
+
+services:
+  kafka-1:
+    <<: *broker
+    hostname: kafka-1
+    ports:
+      - "${KAFKA_1_PORT:-19121}:19121"
+    environment:
+      <<: *broker-env
+      KAFKA_NODE_ID: "1"
+      KAFKA_BROKER_RACK: eu-west-1a
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:19121,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:29092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-host.docker.internal}:${KAFKA_1_PORT:-19121}
+    volumes:
+      - kafka-1-data:/var/lib/kafka/data
+
+  kafka-2:
+    <<: *broker
+    hostname: kafka-2
+    ports:
+      - "${KAFKA_2_PORT:-19122}:19122"
+    environment:
+      <<: *broker-env
+      KAFKA_NODE_ID: "2"
+      KAFKA_BROKER_RACK: eu-west-1b
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:19122,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:29092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-host.docker.internal}:${KAFKA_2_PORT:-19122}
+    volumes:
+      - kafka-2-data:/var/lib/kafka/data
+
+  # Started with a shorter retention than the other two, as a broker set up by hand once might be.
+  kafka-3:
+    <<: *broker
+    hostname: kafka-3
+    ports:
+      - "${KAFKA_3_PORT:-19123}:19123"
+    environment:
+      <<: *broker-env
+      KAFKA_NODE_ID: "3"
+      KAFKA_BROKER_RACK: eu-west-1c
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:19123,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-3:29092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-host.docker.internal}:${KAFKA_3_PORT:-19123}
+      KAFKA_LOG_RETENTION_HOURS: "72"
+    volumes:
+      - kafka-3-data:/var/lib/kafka/data
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:8.3.2
+    hostname: schema-registry
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+    ports:
+      - "${SCHEMA_REGISTRY_PORT:-18086}:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka-1:29092,PLAINTEXT://kafka-2:29092,PLAINTEXT://kafka-3:29092
+      SCHEMA_REGISTRY_HEAP_OPTS: -Xms256m -Xmx256m
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8081'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  seed:
+    image: apache/kafka:4.3.1
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+    environment:
+      KAFKA_HEAP_OPTS: -Xmx256m
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["bash", "/scripts/seed.sh"]
+    restart: "no"
+
+  registry-seed:
+    image: curlimages/curl:8.11.1
+    depends_on:
+      schema-registry:
+        condition: service_healthy
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["sh", "/scripts/seed-registry.sh"]
+    restart: "no"
+
+  producer:
+    <<: *client
+    environment:
+      RATE: ${RATE:-40}
+      KAFKA_HEAP_OPTS: -Xmx128m
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["bash", "/scripts/load.sh"]
+
+  loader-1:
+    <<: *loader
+    hostname: loader-1
+    environment:
+      CLIENT_ID: analytics-loader-1
+      KAFKA_HEAP_OPTS: -Xmx128m
+
+  loader-2:
+    <<: *loader
+    hostname: loader-2
+    environment:
+      CLIENT_ID: analytics-loader-2
+      KAFKA_HEAP_OPTS: -Xmx128m
+
+  # Joins fraud-scorer and reads without ever committing, so the group's position does not move.
+  fraud-scorer:
+    <<: *client
+    hostname: fraud-scorer
+    environment:
+      KAFKA_HEAP_OPTS: -Xmx128m
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >-
+        exec /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-1:29092
+        --topic payments.ledger --group fraud-scorer
+        --consumer-property client.id=fraud-scorer-1
+        --consumer-property enable.auto.commit=false
+        > /dev/null
+
+volumes:
+  kafka-1-data:
+  kafka-2-data:
+  kafka-3-data:

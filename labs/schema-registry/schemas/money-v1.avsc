@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "Money",
+  "namespace": "com.example.common",
+  "fields": [
+    {
+      "name": "amount",
+      "type": "string"
+    },
+    {
+      "name": "currency",
+      "type": "string"
+    }
+  ]
+}

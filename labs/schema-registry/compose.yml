@@ -1,0 +1,91 @@
+name: broka-lab-schema-registry
+
+services:
+  kafka:
+    image: apache/kafka:3.8.0
+    hostname: kafka
+    ports:
+      - "${KAFKA_PORT:-19110}:19110"
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:19110,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-host.docker.internal}:${KAFKA_PORT:-19110}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:29092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 20s
+      retries: 12
+      start_period: 20s
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.8.0
+    hostname: schema-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "${SCHEMA_REGISTRY_PORT:-18085}:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092
+      # One broker, so the registry's own topic cannot have the default three replicas.
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: "1"
+      SCHEMA_REGISTRY_HEAP_OPTS: -Xms256m -Xmx256m
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8081'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  kafka-seed:
+    image: apache/kafka:3.8.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["bash", "/scripts/seed-kafka.sh"]
+    restart: "no"
+
+  registry-seed:
+    image: curlimages/curl:8.11.1
+    depends_on:
+      schema-registry:
+        condition: service_healthy
+      kafka-seed:
+        condition: service_completed_successfully
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./schemas:/schemas:ro
+    entrypoint: ["sh", "/scripts/seed-registry.sh"]
+    restart: "no"
+
+  produce:
+    image: confluentinc/cp-schema-registry:7.8.0
+    depends_on:
+      registry-seed:
+        condition: service_completed_successfully
+    environment:
+      SCHEMA_REGISTRY_HEAP_OPTS: -Xmx256m
+      KAFKA_HEAP_OPTS: -Xmx256m
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./schemas:/schemas:ro
+    entrypoint: ["bash", "/scripts/produce.sh"]
+    restart: "no"
+
+volumes:
+  kafka-data:

@@ -1,0 +1,110 @@
+{
+  "vhosts": [
+    { "name": "shop", "description": "Policies lab", "tags": [], "default_queue_type": "classic" }
+  ],
+  "permissions": [
+    { "user": "broka", "vhost": "shop", "configure": ".*", "write": ".*", "read": ".*" }
+  ],
+  "policies": [
+    {
+      "name": "orders-alternate", "vhost": "shop",
+      "pattern": "^orders$", "apply-to": "exchanges", "priority": 20,
+      "definition": { "alternate-exchange": "orders.unrouted" }
+    },
+    {
+      "name": "audit-retention", "vhost": "shop",
+      "pattern": "^orders\\.audit$", "apply-to": "classic_queues", "priority": 10,
+      "definition": { "dead-letter-exchange": "orders.dlx" }
+    },
+    {
+      "name": "payments-ttl", "vhost": "shop",
+      "pattern": "^payments\\.", "apply-to": "queues", "priority": 4,
+      "definition": { "message-ttl": 600000 }
+    },
+    {
+      "name": "payments-limit", "vhost": "shop",
+      "pattern": "\\.charge$", "apply-to": "queues", "priority": 4,
+      "definition": { "max-length": 2000 }
+    },
+    {
+      "name": "retry-cap", "vhost": "shop",
+      "pattern": "retry", "apply-to": "queues", "priority": 3,
+      "definition": { "max-length": 5000 }
+    },
+    {
+      "name": "audit-fallback", "vhost": "shop",
+      "pattern": "^orders\\.", "apply-to": "queues", "priority": 1,
+      "definition": { "message-ttl": 3600000 }
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "orders", "vhost": "shop", "type": "topic",
+      "durable": true, "auto_delete": false, "internal": false, "arguments": {}
+    },
+    {
+      "name": "orders.unrouted", "vhost": "shop", "type": "fanout",
+      "durable": true, "auto_delete": false, "internal": false, "arguments": {}
+    },
+    {
+      "name": "orders.dlx", "vhost": "shop", "type": "topic",
+      "durable": true, "auto_delete": false, "internal": false, "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "orders.audit", "vhost": "shop", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "classic" }
+    },
+    {
+      "name": "orders.processing", "vhost": "shop", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "quorum" }
+    },
+    {
+      "name": "orders.events", "vhost": "shop", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "stream" }
+    },
+    {
+      "name": "orders.unrouted", "vhost": "shop", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "classic" }
+    },
+    {
+      "name": "retry.orders.dlq", "vhost": "shop", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "classic" }
+    },
+    {
+      "name": "carts.retry", "vhost": "shop", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "classic" }
+    },
+    {
+      "name": "payments.charge", "vhost": "shop", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "classic" }
+    },
+    {
+      "name": "inventory.sync", "vhost": "shop", "durable": true, "auto_delete": false,
+      "arguments": { "x-queue-type": "classic" }
+    }
+  ],
+  "bindings": [
+    {
+      "source": "orders", "vhost": "shop", "destination": "orders.audit",
+      "destination_type": "queue", "routing_key": "order.#", "arguments": {}
+    },
+    {
+      "source": "orders", "vhost": "shop", "destination": "orders.processing",
+      "destination_type": "queue", "routing_key": "order.created", "arguments": {}
+    },
+    {
+      "source": "orders", "vhost": "shop", "destination": "orders.events",
+      "destination_type": "queue", "routing_key": "order.#", "arguments": {}
+    },
+    {
+      "source": "orders.unrouted", "vhost": "shop", "destination": "orders.unrouted",
+      "destination_type": "queue", "routing_key": "", "arguments": {}
+    },
+    {
+      "source": "orders.dlx", "vhost": "shop", "destination": "retry.orders.dlq",
+      "destination_type": "queue", "routing_key": "#", "arguments": {}
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "LegacyOrder",
+  "namespace": "com.example.orders",
+  "fields": [
+    {
+      "name": "orderNumber",
+      "type": "long"
+    },
+    {
+      "name": "total",
+      "type": "double"
+    }
+  ]
+}

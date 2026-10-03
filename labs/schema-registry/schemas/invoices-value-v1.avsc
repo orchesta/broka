@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "Invoice",
+  "namespace": "com.example.billing",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string"
+    },
+    {
+      "name": "total",
+      "type": "com.example.common.Money"
+    }
+  ]
+}

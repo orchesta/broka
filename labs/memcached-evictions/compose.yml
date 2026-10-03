@@ -1,0 +1,53 @@
+name: broka-lab-memcached-evictions
+
+# Memcached runs as PID 1 and does not reap the health check's processes; init does.
+x-node: &node
+  image: memcached:1.6.45-alpine
+  init: true
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD-SHELL", "printf 'version\\r\\n' | timeout 2 nc -w 2 127.0.0.1 11211 | grep -q VERSION"]
+    interval: 5s
+    timeout: 5s
+    retries: 15
+
+services:
+  # The node under pressure. Its own page mover is off, so pages stay where the seed commits them.
+  cache-a:
+    <<: *node
+    command: ["memcached", "-m", "32", "-c", "1024", "-o", "track_sizes,slab_automove=0"]
+    ports:
+      - "${CACHE_A_PORT:-11311}:11211"
+
+  cache-b:
+    <<: *node
+    command: ["memcached", "-m", "64", "-c", "1024", "-o", "track_sizes"]
+    ports:
+      - "${CACHE_B_PORT:-11312}:11211"
+
+  seed:
+    image: memcached:1.6.45-alpine
+    depends_on:
+      cache-a:
+        condition: service_healthy
+      cache-b:
+        condition: service_healthy
+    environment:
+      SMALL_TTL: ${SMALL_TTL:-45}
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["sh", "/scripts/seed.sh"]
+    restart: "no"
+
+  load:
+    image: memcached:1.6.45-alpine
+    init: true
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    environment:
+      RATE: ${RATE:-40}
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["sh", "/scripts/load.sh"]
+    restart: unless-stopped

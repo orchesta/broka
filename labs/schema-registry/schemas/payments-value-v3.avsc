@@ -1,0 +1,16 @@
+{
+  "type": "record",
+  "name": "Payment",
+  "namespace": "com.example.payments",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string"
+    },
+    {
+      "name": "amount",
+      "type": "string",
+      "default": ""
+    }
+  ]
+}

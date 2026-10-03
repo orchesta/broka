@@ -1,0 +1,86 @@
+name: broka-lab-artemis-addresses
+
+# The STOMP clients run in the broker's image for its BusyBox nc; they start no JVM.
+x-stomp-client: &stomp-client
+  image: apache/artemis:2.57.0-alpine
+  environment: &stomp-env
+    ARTEMIS_USER: broka
+    ARTEMIS_PASSWORD: ${ARTEMIS_PASSWORD:-broka-lab-pass}
+  volumes:
+    - ./scripts:/scripts:ro
+
+services:
+  artemis:
+    image: apache/artemis:2.57.0-alpine
+    hostname: artemis
+    environment:
+      ARTEMIS_USER: broka
+      ARTEMIS_PASSWORD: ${ARTEMIS_PASSWORD:-broka-lab-pass}
+      ANONYMOUS_LOGIN: "false"
+      EXTRA_ARGS: "--http-host 0.0.0.0 --relax-jolokia --java-memory 512M"
+    ports:
+      - "${ARTEMIS_CONSOLE_PORT:-18161}:8161"
+    volumes:
+      # The whole instance: the image creates it on first start, and a volume on data/ alone leaves it incomplete.
+      - artemis-instance:/var/lib/artemis-instance
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          wget -q -O /dev/null
+          --header "Authorization: Basic $$(printf '%s:%s' "$$ARTEMIS_USER" "$$ARTEMIS_PASSWORD" | base64)"
+          http://localhost:8161/console/jolokia/version
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  seed:
+    image: curlimages/curl:8.11.1
+    depends_on:
+      artemis:
+        condition: service_healthy
+    environment:
+      ARTEMIS_PASSWORD: ${ARTEMIS_PASSWORD:-broka-lab-pass}
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["sh", "/scripts/seed.sh"]
+    restart: "no"
+
+  schedule:
+    <<: *stomp-client
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    entrypoint: ["sh", "/scripts/schedule.sh"]
+    restart: "no"
+
+  # Takes every message on shipments.dispatch and never acknowledges one.
+  dispatch-worker:
+    <<: *stomp-client
+    depends_on:
+      schedule:
+        condition: service_completed_successfully
+    environment:
+      <<: *stomp-env
+      CLIENT_ID: dispatch-worker
+      QUEUE: shipments::shipments.dispatch
+    entrypoint: ["sh", "/scripts/consume.sh"]
+    restart: unless-stopped
+
+  # Its selector matches none of the messages waiting on returns.inbound.
+  returns-worker:
+    <<: *stomp-client
+    depends_on:
+      schedule:
+        condition: service_completed_successfully
+    environment:
+      <<: *stomp-env
+      CLIENT_ID: returns-worker
+      QUEUE: returns::returns.inbound
+      SELECTOR: carrier = 'dhl'
+    entrypoint: ["sh", "/scripts/consume.sh"]
+    restart: unless-stopped
+
+volumes:
+  artemis-instance:

@@ -40,7 +40,7 @@ x-loader: &loader
   command:
     - >-
       exec /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-1:29092
-      --topic clickstream.raw --group analytics-loader
+      --topic market.ticks.equities --group market-data-archiver
       --consumer-property client.id=$$CLIENT_ID
       --consumer-property max.partition.fetch.bytes=1
       --consumer-property fetch.min.bytes=50000000
@@ -156,28 +156,28 @@ services:
     <<: *loader
     hostname: loader-1
     environment:
-      CLIENT_ID: analytics-loader-1
+      CLIENT_ID: market-data-archiver-1
       KAFKA_HEAP_OPTS: -Xmx128m
 
   loader-2:
     <<: *loader
     hostname: loader-2
     environment:
-      CLIENT_ID: analytics-loader-2
+      CLIENT_ID: market-data-archiver-2
       KAFKA_HEAP_OPTS: -Xmx128m
 
-  # Joins fraud-scorer and reads without ever committing, so the group's position does not move.
-  fraud-scorer:
+  # Joins surveillance-scorer and reads without ever committing, so the group's position does not move.
+  surveillance-scorer:
     <<: *client
-    hostname: fraud-scorer
+    hostname: surveillance-scorer
     environment:
       KAFKA_HEAP_OPTS: -Xmx128m
     entrypoint: ["/bin/bash", "-c"]
     command:
       - >-
         exec /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka-1:29092
-        --topic payments.ledger --group fraud-scorer
-        --consumer-property client.id=fraud-scorer-1
+        --topic settlement.ledger --group surveillance-scorer
+        --consumer-property client.id=surveillance-scorer-1
         --consumer-property enable.auto.commit=false
         > /dev/null
 

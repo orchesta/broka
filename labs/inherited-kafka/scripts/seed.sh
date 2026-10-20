@@ -13,7 +13,7 @@ done
 topics() { "$BIN/kafka-topics.sh" --bootstrap-server "$BOOT" "$@"; }
 groups() { "$BIN/kafka-consumer-groups.sh" --bootstrap-server "$BOOT" "$@"; }
 
-if groups --list | grep -qx billing-reconciler; then
+if groups --list | grep -qx eod-reconciler; then
   echo "already seeded; nothing to do"
   exit 0
 fi
@@ -24,13 +24,13 @@ create() {
   shift 2
   topics --create --if-not-exists --topic "$topic" --replica-assignment "$assignment" "$@"
 }
-create orders 1:2:3,2:3:1,3:1:2,1:2:3,2:3:1,3:1:2 --config min.insync.replicas=2 --config retention.ms=1209600000
+create orders.equity 1:2:3,2:3:1,3:1:2,1:2:3,2:3:1,3:1:2 --config min.insync.replicas=2 --config retention.ms=1209600000
 # Ten of twelve leaders on broker 1.
-create clickstream.raw 1:2,1:3,1:2,1:3,1:2,1:3,1:2,1:3,2:3,3:2,1:2,1:3 --config retention.ms=86400000
-create checkout.events 1,1,1,1,1,1
-create payments.ledger 3:1,3:2,1:3 --config min.insync.replicas=2
-create audit.log 1:2:3,2:3:1,3:1:2 --config cleanup.policy=compact
-create inventory.snapshots 1:2:3,2:3:1,3:1:2 --config retention.bytes=104857600
+create market.ticks.equities 1:2,1:3,1:2,1:3,1:2,1:3,1:2,1:3,2:3,3:2,1:2,1:3 --config retention.ms=86400000
+create rfq.requests 1,1,1,1,1,1
+create settlement.ledger 3:1,3:2,1:3 --config min.insync.replicas=2
+create audit.events 1:2:3,2:3:1,3:1:2 --config cleanup.policy=compact
+create positions.snapshots 1:2:3,2:3:1,3:1:2 --config retention.bytes=104857600
 
 # write <topic> <from> <to> <key modulo, 0 for unique keys>
 write() {
@@ -43,23 +43,23 @@ consumed() {
   groups --group "$1" --topic "$2" --reset-offsets --to-latest --execute > /dev/null
 }
 
-write orders 1 600 0
-write checkout.events 1 300 0
-write payments.ledger 1 200 0
-write audit.log 1 500 50
-write inventory.snapshots 1 100 0
-write clickstream.raw 1 2000 0
+write orders.equity 1 600 0
+write rfq.requests 1 300 0
+write settlement.ledger 1 200 0
+write audit.events 1 500 50
+write positions.snapshots 1 100 0
+write market.ticks.equities 1 2000 0
 
-consumed billing-reconciler orders
-consumed nightly-export checkout.events
-consumed legacy-indexer audit.log
-consumed fraud-scorer payments.ledger
+consumed eod-reconciler orders.equity
+consumed nightly-export rfq.requests
+consumed legacy-indexer audit.events
+consumed surveillance-scorer settlement.ledger
 
 # What arrived after each of them stopped reading.
-write orders 601 850 0
-write checkout.events 301 420 0
-write audit.log 501 550 50
-write payments.ledger 201 350 0
+write orders.equity 601 850 0
+write rfq.requests 301 420 0
+write audit.events 501 550 50
+write settlement.ledger 201 350 0
 
 echo "dynamic broker settings"
 "$BIN/kafka-configs.sh" --bootstrap-server "$BOOT" --entity-type brokers --entity-name 2 \
@@ -69,16 +69,16 @@ echo "dynamic broker settings"
 
 echo "ACLs"
 acl() { "$BIN/kafka-acls.sh" --bootstrap-server "$BOOT" --add --force "$@" > /dev/null; }
-acl --allow-principal User:svc-ledger --operation Write --operation Describe --topic payments.ledger
-acl --allow-principal User:svc-ledger --operation Read --group ledger-audit
-acl --allow-principal User:svc-ledger --operation IdempotentWrite --cluster
-acl --allow-principal User:svc-ledger --operation Write --operation Describe \
-  --transactional-id ledger-writer- --resource-pattern-type prefixed
-acl --allow-principal User:svc-analytics --operation Read --operation Describe \
-  --topic clickstream. --resource-pattern-type prefixed
-acl --allow-principal User:svc-analytics --operation Read --group analytics- --resource-pattern-type prefixed
-acl --deny-principal User:svc-analytics --operation Read --topic payments.ledger
+acl --allow-principal User:svc-settlement --operation Write --operation Describe --topic settlement.ledger
+acl --allow-principal User:svc-settlement --operation Read --group settlement-audit
+acl --allow-principal User:svc-settlement --operation IdempotentWrite --cluster
+acl --allow-principal User:svc-settlement --operation Write --operation Describe \
+  --transactional-id settlement-writer- --resource-pattern-type prefixed
+acl --allow-principal User:svc-marketdata --operation Read --operation Describe \
+  --topic market. --resource-pattern-type prefixed
+acl --allow-principal User:svc-marketdata --operation Read --group market-data- --resource-pattern-type prefixed
+acl --deny-principal User:svc-marketdata --operation Read --topic settlement.ledger
 
-topics --describe --topic clickstream.raw
+topics --describe --topic market.ticks.equities
 groups --describe --all-groups 2> /dev/null || true
 echo "seed complete"

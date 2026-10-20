@@ -15,9 +15,9 @@ register() {
 }
 
 curl -sS -f -H "$CT" -X PUT "$SR/config" -d '{"compatibility":"BACKWARD"}' > /dev/null
-register orders-value '{\"type\":\"record\",\"name\":\"Order\",\"namespace\":\"com.example\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"}]}'
-register orders-value '{\"type\":\"record\",\"name\":\"Order\",\"namespace\":\"com.example\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"note\",\"type\":[\"null\",\"string\"],\"default\":null}]}'
-register payments.ledger-value '{\"type\":\"record\",\"name\":\"Entry\",\"namespace\":\"com.example\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"amount\",\"type\":\"double\"}]}'
-register checkout.events-value '{\"type\":\"object\",\"properties\":{\"cartId\":{\"type\":\"string\"}}}' JSON
+register orders.equity-value '{\"type\":\"record\",\"name\":\"Order\",\"namespace\":\"com.example\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"}]}'
+register orders.equity-value '{\"type\":\"record\",\"name\":\"Order\",\"namespace\":\"com.example\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"note\",\"type\":[\"null\",\"string\"],\"default\":null}]}'
+register settlement.ledger-value '{\"type\":\"record\",\"name\":\"Entry\",\"namespace\":\"com.example\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"amount\",\"type\":\"double\"}]}'
+register rfq.requests-value '{\"type\":\"object\",\"properties\":{\"rfqId\":{\"type\":\"string\"}}}' JSON
 
 echo "subjects: $(curl -sS -f "$SR/subjects")"

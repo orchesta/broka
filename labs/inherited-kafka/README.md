@@ -3,9 +3,9 @@
 A three-broker Kafka 4.3 cluster in KRaft mode, each broker also a controller, set up the way an
 inherited cluster often is. Broker 3 was started with a shorter log retention than the other two, and
 broker 2 carries a dynamic setting the others do not. Partitions and leaders are uneven: broker 1 leads
-ten of `clickstream.raw`'s twelve partitions, and `checkout.events` has one replica, all on broker 1.
+ten of `market.ticks.equities`'s twelve partitions, and `rfq.requests` has one replica, all on broker 1.
 Topics carry overridden retention, minimum in-sync replicas and compaction. Three consumer groups have
-committed offsets and no members, one has a member that never commits, and `analytics-loader` falls
+committed offsets and no members, one has a member that never commits, and `market-data-archiver` falls
 behind with two members. ACLs are enforced, with allow, deny and prefix rules for two application
 principals. A Schema Registry runs beside it with a few subjects, and there is no Kafka Connect.
 
@@ -34,7 +34,7 @@ principals. A Schema Registry runs beside it with a few subjects, and there is n
 
    The seed creates the topics with fixed replica placements, writes records, commits the stopped groups'
    offsets and then writes more, sets the dynamic broker settings and adds the ACLs. The producer, the two
-   `analytics-loader` members and `fraud-scorer` start when it is done.
+   `market-data-archiver` members and `surveillance-scorer` start when it is done.
 
 3. Check what the seed did:
 
@@ -67,7 +67,7 @@ Register the Schema Registry for step 7 only: the connection's row menu ▸ **Sc
 0. **Connect read-only.** With the switch on, any write is refused and the attempt is recorded in the
    audit log. The connection's page ends with **Supported features**.
 1. **Overview.** Healthy, 3 brokers, **Under-replicated** 0. The groups with the most lag include
-   `billing-reconciler`, `nightly-export` and `legacy-indexer`, all `Empty`.
+   `eod-reconciler`, `nightly-export` and `legacy-indexer`, all `Empty`.
 2. **Brokers ▸ Version** reads 4.3. **Features** lists each feature with its finalized level; `kraft.version`
    reads **0 (off)**, because the quorum's voters are fixed in configuration. **Quorum** shows the leader
    and the two other voters with how far each trails.
@@ -77,24 +77,26 @@ Register the Schema Registry for step 7 only: the connection's row menu ▸ **Sc
    Open broker 2 ▸ **Configuration**: `log.cleaner.threads` has the source `DYNAMIC_BROKER_CONFIG`,
    `message.max.bytes` `DYNAMIC_DEFAULT_BROKER_CONFIG`, and the listeners `STATIC_BROKER_CONFIG`. **View as
    text** gives the whole configuration. **Logs ▸ Directories** shows the volume's size and free space.
-4. **Topics.** Add the replication factor and minimum in-sync replicas columns: `checkout.events` has one
-   replica, `payments.ledger` two with a minimum of two. Open `orders` ▸ **Config**: only `retention.ms` and
-   `min.insync.replicas` are listed, as overrides. `audit.log` is compacted: its message count is higher
-   than its 50 distinct keys. **Partitions** on `clickstream.raw`, then **Per broker**: broker 1 leads ten.
-5. **Consumer Groups.** `billing-reconciler`, `nightly-export` and `legacy-indexer` carry **Inactive**:
-   committed offsets and no members. `fraud-scorer` has a member and a position that does not move while
-   150 records wait; after a minute it reads **Stalled**. `analytics-loader` is `Stable` with a lag that
-   rises; its **Topology** has a card for each of its two members.
-6. **Service Accounts** lists `svc-analytics` and `svc-ledger`. `svc-analytics`'s deny on `payments.ledger`
-   sorts to the top, and its `clickstream.` topic rule and `analytics-` group rule carry **Prefix**. On
-   **Topics ▸ `clickstream.raw` ▸ ACL**, the prefix rule appears although it does not name the topic.
+4. **Topics.** Add the replication factor and minimum in-sync replicas columns: `rfq.requests` has one
+   replica, `settlement.ledger` two with a minimum of two. Open `orders.equity` ▸ **Config**: only
+   `retention.ms` and `min.insync.replicas` are listed, as overrides. `audit.events` is compacted: its
+   message count is higher than its 50 distinct keys. **Partitions** on `market.ticks.equities`, then
+   **Per broker**: broker 1 leads ten.
+5. **Consumer Groups.** `eod-reconciler`, `nightly-export` and `legacy-indexer` carry **Inactive**:
+   committed offsets and no members. `surveillance-scorer` has a member and a position that does not
+   move while 150 records wait; after a minute it reads **Stalled**. `market-data-archiver` is `Stable`
+   with a lag that rises; its **Topology** has a card for each of its two members.
+6. **Service Accounts** lists `svc-marketdata` and `svc-settlement`. `svc-marketdata`'s deny on
+   `settlement.ledger` sorts to the top, and its `market.` topic rule and `market-data-` group rule carry
+   **Prefix**. On **Topics ▸ `market.ticks.equities` ▸ ACL**, the prefix rule appears although it does
+   not name the topic.
 7. **Schema registry and connectors.** Before the registry is registered, **Schema Registry** and
    **Connect** are greyed out. Register it, and its list opens on 3 subjects and global compatibility
    Backward. **Connect** stays greyed out: this lab runs none.
 8. **A broker goes away.** Run `docker compose stop kafka-3`. Within a few seconds broker 3 is fenced: the
-   list marks it **FENCED**, **Under-replicated** counts the partitions it held, and on `payments.ledger`
+   list marks it **FENCED**, **Under-replicated** counts the partitions it held, and on `settlement.ledger`
    ▸ **Partitions** broker 3 is listed under replicas and missing from in-sync. With one in-sync replica
-   against a minimum of two, `payments.ledger` now refuses writes that wait for all replicas. Run
+   against a minimum of two, `settlement.ledger` now refuses writes that wait for all replicas. Run
    `docker compose start kafka-3` to bring it back.
 
 The guide's case of upgraded binaries running an older metadata version is not reproduced: this cluster

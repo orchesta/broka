@@ -18,7 +18,7 @@ services:
       start_period: 30s
 
   orchestrator:
-    image: ${ORCHESTRATOR_IMAGE:-orchestalabs/broka-orchestrator}:${BROKA_VERSION:-1.3.1}
+    image: ${ORCHESTRATOR_IMAGE:-orchestalabs/broka-orchestrator}:${BROKA_VERSION:-1.3.2}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -45,7 +45,7 @@ services:
       BROKA_PUBLIC_URL: ${BROKA_PUBLIC_URL-}
 
   broker:
-    image: ${BROKER_IMAGE:-orchestalabs/broka-broker}:${BROKA_VERSION:-1.3.1}
+    image: ${BROKER_IMAGE:-orchestalabs/broka-broker}:${BROKA_VERSION:-1.3.2}
     restart: unless-stopped
     # The JVM sizes its heap to 70% of the container's memory and never gives it back, so without a limit it sizes to
     # the host. 4 GiB: a busy broker filled 1 GiB on its own, and up to four JavaScript filter workers add about
@@ -68,7 +68,7 @@ services:
       BROKER_ORCHESTRATOR_URL: "http://orchestrator:8080"
 
   ui:
-    image: ${UI_IMAGE:-orchestalabs/broka-ui}:${BROKA_VERSION:-1.3.1}
+    image: ${UI_IMAGE:-orchestalabs/broka-ui}:${BROKA_VERSION:-1.3.2}
     restart: unless-stopped
     depends_on:
       orchestrator:

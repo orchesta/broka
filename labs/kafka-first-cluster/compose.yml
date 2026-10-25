@@ -1,0 +1,85 @@
+name: broka-lab-kafka-first-cluster
+
+x-client: &client
+  image: apache/kafka:4.3.2
+  depends_on:
+    seed:
+      condition: service_completed_successfully
+  restart: unless-stopped
+
+services:
+  # One container is both the broker and the controller, and the only voter of its quorum.
+  kafka:
+    image: apache/kafka:4.3.2
+    hostname: kafka
+    ports:
+      - "${KAFKA_PORT:-19130}:19130"
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      # Fixed, so the cluster keeps the same id on every start.
+      CLUSTER_ID: cAJ-Vh4LTPKLR4UVabyyQg
+      # INTERNAL serves the lab's own containers, EXTERNAL serves BROKA and the host, CONTROLLER the quorum.
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:19130,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-host.docker.internal}:${KAFKA_PORT:-19130}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      # The internal topics default to three replicas, which one broker cannot provide.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      # Topics are created on purpose, by the seed or from BROKA.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: -Xms384m -Xmx384m
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:29092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 20s
+      retries: 12
+      start_period: 20s
+
+  seed:
+    image: apache/kafka:4.3.2
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_HEAP_OPTS: -Xmx256m
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["bash", "/scripts/seed.sh"]
+    restart: "no"
+
+  producer:
+    <<: *client
+    environment:
+      RATE: ${RATE:-10}
+      KAFKA_HEAP_OPTS: -Xmx128m
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["bash", "/scripts/load.sh"]
+
+  # The one member of ride-billing. It keeps up with the producer and commits every two seconds.
+  billing:
+    <<: *client
+    hostname: billing
+    environment:
+      KAFKA_HEAP_OPTS: -Xmx128m
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >-
+        exec /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:29092
+        --topic rides.completed --group ride-billing
+        --command-property client.id=ride-billing-1
+        --command-property auto.commit.interval.ms=2000
+        > /dev/null
+
+volumes:
+  kafka-data:

@@ -49,6 +49,7 @@ Each lab starts the brokers a guide uses, seeds them, and reproduces the situati
 | [`artemis-addresses`](labs/artemis-addresses/) | [Where an Artemis message went: reading from the address down](https://broka.dev/guides/artemis-from-the-address-down) | Commercial |
 | [`memcached-evictions`](labs/memcached-evictions/) | [Memcached evicts before it looks full](https://broka.dev/guides/memcached-evicts-before-it-looks-full) | Commercial |
 | [`inherited-kafka`](labs/inherited-kafka/) | [Reading a Kafka cluster you did not build](https://broka.dev/guides/reading-a-kafka-cluster-you-did-not-build) | Community |
+| [`kafka-first-cluster`](labs/kafka-first-cluster/) | [Your first Kafka cluster, read in BROKA](https://broka.dev/guides/your-first-kafka-cluster) | Community |
 
 Requirements: Docker with Compose v2.
 

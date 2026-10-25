@@ -13,13 +13,14 @@
   <a href="https://broka.dev">Website</a> ·
   <a href="https://broka.dev/docs">Documentation</a> ·
   <a href="https://broka.dev/guides">Guides</a> ·
+  <a href="https://broka.dev/learn">Learn</a> ·
   <a href="https://broka.dev/download">Download</a>
 </p>
 
 ---
 
-This repository holds the installation recipe for the Community edition and the runnable environments
-behind the BROKA guides.
+This repository holds the installation recipe for the Community edition, the runnable environments
+behind the BROKA guides, and the code behind the Learn tutorials.
 
 ## Install
 
@@ -51,6 +52,15 @@ Each lab starts the brokers a guide uses, seeds them, and reproduces the situati
 | [`inherited-kafka`](labs/inherited-kafka/) | [Reading a Kafka cluster you did not build](https://broka.dev/guides/reading-a-kafka-cluster-you-did-not-build) | Community |
 
 Requirements: Docker with Compose v2.
+
+## Learn
+
+The lessons on [broka.dev/learn](https://broka.dev/learn) explain how the platforms themselves work. Each tutorial's
+code lives here under `learn/<platform>/`, numbered in lesson order, and runs on its own; BROKA is optional.
+
+| Code | Lesson | Edition |
+|---|---|---|
+| [`kafka/01-single-node-kraft`](learn/kafka/01-single-node-kraft/) | [A single-node Kafka cluster with KRaft](https://broka.dev/learn/kafka/single-node-kraft-cluster) | Community |
 
 ## License
 

@@ -61,6 +61,7 @@ code lives here under `learn/<platform>/`, numbered in lesson order, and runs on
 | Code | Lesson | Edition |
 |---|---|---|
 | [`kafka/01-single-node-kraft`](learn/kafka/01-single-node-kraft/) | [A single-node Kafka cluster with KRaft](https://broka.dev/learn/kafka/single-node-kraft-cluster) | Community |
+| [`kafka/02-topics-and-partitions`](learn/kafka/02-topics-and-partitions/) | [Topics, partitions and the log underneath](https://broka.dev/learn/kafka/topics-partitions-and-the-log) | Community |
 
 ## License
 

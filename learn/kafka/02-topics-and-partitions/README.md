@@ -12,7 +12,8 @@ partitions, and to read the data directory file by file.
 
 ## Requirements
 
-- Docker with Compose v2
+- Docker with Compose v2.20 or later, for `docker compose wait`
+- A bash-style shell; on Windows, run the commands in WSL
 - Host port 19131 free, or change it in `.env`
 - BROKA, if you want to read the cluster from its pages, for example from [`install/`](../../../install/)
 

@@ -83,9 +83,9 @@ IP in the connection.
 4. **Topics.** Add the **Cleanup policy** column from **Columns**: `rides.completed` is `delete`,
    `stations.status` is `compact`. Open `stations.status` ▸ **Config**: the tab opens with
    **Overrides only**, and `cleanup.policy` is listed as overridden, next to the
-   `min.insync.replicas` the broker wrote. The
-   pencil opens the setting with Kafka's default and a **Reset to default** button. Its message count
-   is higher than its 12 keys, because compaction never touches the active segment. On `rides.completed` ▸
+   `min.insync.replicas` the broker wrote. The pencil opens the setting with Kafka's default and
+   a **Reset to default** button. The message count of `stations.status` is higher than its 12
+   keys, because compaction never touches the active segment. On `rides.completed` ▸
    **Partitions**, each of the six rows shows one replica, on broker 1, and it is in sync.
 5. **Create a topic.** **Create topic**, name `bikes.maintenance`, 3 partitions. **Replication
    factor** is fixed at 1, and its **What is this?** note says why: it can never exceed the broker

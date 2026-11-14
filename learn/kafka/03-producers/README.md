@@ -11,8 +11,9 @@ producer, and what a producer does with records that have no key.
 
 ## Requirements
 
-- Docker with Compose v2
-- JDK 21 with Maven 3.9, or Python 3.12 with `pip`
+- Docker with Compose v2.20 or later
+- A bash-style shell; on Windows, run the commands in WSL
+- JDK 21 with Maven 3.9 or later, or Python 3.12 with `pip`
 - Host ports 19232 and 19132 free, or change them in `.env`
 - BROKA, if you want to read the cluster from its pages, for example from [`install/`](../../../install/)
 

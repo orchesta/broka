@@ -11,9 +11,10 @@ BROKA: a topic you create, a message you write, a consumer you stop and start.
 
 ## Requirements
 
-- Docker with Compose v2
-- BROKA running, for example from [`install/`](../../../install/)
+- Docker with Compose v2.20 or later
+- A bash-style shell; on Windows, run the commands in WSL
 - Host port 19130 free, or change it in `.env`
+- BROKA, if you want to read the cluster from its pages, for example from [`install/`](../../../install/)
 
 ## Run
 
@@ -27,7 +28,7 @@ BROKA: a topic you create, a message you write, a consumer you stop and start.
 2. Start the broker, the seed job, the producer and the consumer:
 
    ```bash
-   docker compose up -d
+   docker compose up -d --wait
    ```
 
    The broker formats its storage on the first start and comes up alone, as the only voter of its
@@ -80,8 +81,9 @@ IP in the connection.
    **Features** lists each feature with its finalized level. `kraft.version` reads **0 (off)**,
    because the voter is fixed in configuration; `metadata.version` reads the 4.3 level.
 4. **Topics.** Add the **Cleanup policy** column from **Columns**: `rides.completed` is `delete`,
-   `stations.status` is `compact`. Open `stations.status` ▸ **Config** and tick **Overrides only**:
-   `cleanup.policy` is listed as overridden, next to the `min.insync.replicas` the broker wrote. The
+   `stations.status` is `compact`. Open `stations.status` ▸ **Config**: the tab opens with
+   **Overrides only**, and `cleanup.policy` is listed as overridden, next to the
+   `min.insync.replicas` the broker wrote. The
    pencil opens the setting with Kafka's default and a **Reset to default** button. Its message count
    is higher than its 12 keys, because compaction never touches the active segment. On `rides.completed` ▸
    **Partitions**, each of the six rows shows one replica, on broker 1, and it is in sync.

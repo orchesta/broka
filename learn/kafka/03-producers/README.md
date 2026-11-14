@@ -14,6 +14,9 @@ producer, and what a producer does with records that have no key.
 - Docker with Compose v2.20 or later
 - A bash-style shell; on Windows, run the commands in WSL
 - JDK 21 with Maven 3.9 or later, or Python 3.12 with `pip`
+- On Ubuntu 24.04, also under WSL: the `maven` package is 3.8, which fails on this project with "Source
+  option 5 is no longer supported", so install Maven 3.9 from maven.apache.org; for Python, install the
+  `python3-venv` package first
 - Host ports 19232 and 19132 free, or change them in `.env`
 - BROKA, if you want to read the cluster from its pages, for example from [`install/`](../../../install/)
 

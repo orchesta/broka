@@ -64,6 +64,7 @@ code lives here under `learn/<platform>/`, numbered in lesson order, and runs on
 | [`kafka/02-topics-and-partitions`](learn/kafka/02-topics-and-partitions/) | [Topics, partitions and the log underneath](https://broka.dev/learn/kafka/topics-partitions-and-the-log) | Community |
 | [`kafka/03-producers`](learn/kafka/03-producers/) | [Producing: keys, partitions and ordering](https://broka.dev/learn/kafka/producing-keys-partitions-and-ordering) | Community |
 | [`kafka/04-consumers`](learn/kafka/04-consumers/) | [Consuming: offsets, groups and where to start](https://broka.dev/learn/kafka/consuming-offsets-and-where-to-start) | Community |
+| [`kafka/05-consumer-groups`](learn/kafka/05-consumer-groups/) | [Consumer groups and partition assignment](https://broka.dev/learn/kafka/consumer-groups-and-partition-assignment) | Community |
 
 ## License
 

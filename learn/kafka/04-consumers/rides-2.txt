@@ -1,0 +1,3 @@
+bike-1001|{"bike":"bike-1001","from":"station-04","to":"station-09","minutes":22}
+bike-1003|{"bike":"bike-1003","from":"station-12","to":"station-01","minutes":17}
+bike-1042|{"bike":"bike-1042","from":"station-10","to":"station-11","minutes":6}

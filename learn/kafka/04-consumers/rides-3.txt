@@ -1,0 +1,2 @@
+bike-1234|{"bike":"bike-1234","from":"station-01","to":"station-05","minutes":14}
+bike-1003|{"bike":"bike-1003","from":"station-01","to":"station-07","minutes":25}

@@ -1,0 +1,12 @@
+bike-1001|{"bike":"bike-1001","from":"station-03","to":"station-11","minutes":12}
+bike-1002|{"bike":"bike-1002","from":"station-07","to":"station-02","minutes":18}
+bike-1003|{"bike":"bike-1003","from":"station-12","to":"station-05","minutes":9}
+bike-1042|{"bike":"bike-1042","from":"station-11","to":"station-03","minutes":20}
+bike-1234|{"bike":"bike-1234","from":"station-01","to":"station-08","minutes":31}
+bike-1777|{"bike":"bike-1777","from":"station-06","to":"station-06","minutes":44}
+bike-1001|{"bike":"bike-1001","from":"station-11","to":"station-04","minutes":15}
+bike-1002|{"bike":"bike-1002","from":"station-02","to":"station-09","minutes":7}
+bike-1003|{"bike":"bike-1003","from":"station-05","to":"station-12","minutes":11}
+bike-1042|{"bike":"bike-1042","from":"station-03","to":"station-10","minutes":26}
+bike-1234|{"bike":"bike-1234","from":"station-08","to":"station-01","minutes":29}
+bike-1777|{"bike":"bike-1777","from":"station-06","to":"station-10","minutes":13}

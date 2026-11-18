@@ -1,0 +1,6 @@
+bike-1003|{"bike":"bike-1003","from":"station-12","to":"station-05","minutes":9}
+bike-1009|{"bike":"bike-1009","from":"station-04","to":"station-09","minutes":16}
+bike-1002|{"bike":"bike-1002","from":"station-07","to":"station-02","minutes":18}
+bike-1010|{"bike":"bike-1010","from":"station-10","to":"station-01","minutes":23}
+bike-1001|{"bike":"bike-1001","from":"station-03","to":"station-11","minutes":12}
+bike-1004|{"bike":"bike-1004","from":"station-08","to":"station-06","minutes":7}

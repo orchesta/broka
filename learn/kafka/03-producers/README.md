@@ -13,10 +13,15 @@ producer, and what a producer does with records that have no key.
 
 - Docker with Compose v2.20 or later
 - A bash-style shell; on Windows, run the commands in WSL
-- JDK 21 with Maven 3.9 or later, or Python 3.12 with `pip`
+- JDK 21 with Maven 3.9 or later, or Python 3.12 to 3.14 with `pip`
 - On Ubuntu 24.04, also under WSL: the `maven` package is 3.8, which fails on this project with "Source
   option 5 is no longer supported", so install Maven 3.9 from maven.apache.org; for Python, install the
   `python3-venv` package first
+- If `python3 --version` prints 3.15: the lab's Kafka client, `confluent-kafka` 2.16.1, has no prebuilt
+  package for Python 3.15, so `pip` tries to build the package from source and usually fails; install
+  Python 3.14 as well, for example with `brew install python@3.14` on a Mac, and in step 4 create the
+  virtual environment with `python3.14 -m venv --clear .venv` instead of `python3 -m venv .venv`
+  (`--clear` empties a `.venv` an earlier attempt left behind)
 - Host ports 19232 and 19132 free, or change them in `.env`
 - BROKA, if you want to read the cluster from its pages, for example from [`install/`](../../../install/)
 

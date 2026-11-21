@@ -1,0 +1,58 @@
+name: broka-lab-kafka-consumer-lag
+
+services:
+  # One container is both the broker and the controller, and the only voter of its quorum.
+  kafka:
+    image: apache/kafka:4.3.2
+    hostname: kafka
+    ports:
+      - "${KAFKA_PORT:-19135}:19135"
+      - "${KAFKA_HOST_PORT:-19235}:19235"
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      # Fixed, so the cluster keeps the same id on every start.
+      CLUSTER_ID: N4xZkxeBQbegCoUlr8oh9Q
+      # INTERNAL serves the tools inside this container and the producer, HOST the programs you run on
+      # this machine, EXTERNAL clients in other containers such as BROKA, CONTROLLER the quorum.
+      KAFKA_LISTENERS: INTERNAL://:29092,HOST://:19235,EXTERNAL://:19135,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,HOST://localhost:${KAFKA_HOST_PORT:-19235},EXTERNAL://${KAFKA_ADVERTISED_HOST:-host.docker.internal}:${KAFKA_PORT:-19135}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,HOST:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      # The internal topics default to three replicas, which one broker cannot provide.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      # Topics are created on purpose, by you.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: -Xms384m -Xmx384m
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:29092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 20s
+      retries: 12
+      start_period: 20s
+
+  # Writes RATE rides a second to rides.completed until you stop it. It is in a profile of its own, so
+  # docker compose up leaves it out: it starts when you name it, after you have created the topic.
+  producer:
+    image: apache/kafka:4.3.2
+    profiles: ["rides"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      RATE: ${RATE:-2}
+      KAFKA_HEAP_OPTS: -Xmx128m
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["bash", "/scripts/load.sh"]
+
+volumes:
+  kafka-data:
